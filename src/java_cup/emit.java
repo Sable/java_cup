@@ -1,8 +1,12 @@
 package java_cup;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
-import java.util.Stack;
 import java.util.Enumeration;
+import java.util.Stack;
 
 /** 
  * This class handles emitting generated code for the resulting parser.
@@ -365,6 +369,12 @@ public class emit {
   /*. . . . . . . . . . . . . . . . . . . . . . . . . . . . . .*/
 
   static final int UPPERLIMIT = 300;
+
+	// true = tables are stored in classes
+	// false = tables are stored in files (usefull for large grammar because
+	// the tables will make the class > 65535 bytes)
+	private static final boolean UNPACK_FROM_STRING = false;//true;//false;
+
   /** Emit code for the non-public class holding the actual action code. 
    * @param out        stream to produce output on.
    * @param start_prod the start production of the grammar.
@@ -481,7 +491,6 @@ public class emit {
 //			").value != null )");
 
 // TUM 20060608: even when its null: who cares?
-
 	    // store the intermediate result into RESULT
             out.println("                " + "RESULT = " +
 	      "(" + prod.lhs().the_symbol().stack_type() + ") " +
@@ -495,7 +504,7 @@ public class emit {
         /* if there is an action string, emit it */
           if (prod.action() != null && prod.action().code_string() != null &&
               !prod.action().equals(""))
-            out.println(prod.action().code_string());
+					out.println(prod.action().code_string() + ";");
 
 	  /* here we have the left and right values being propagated.  
 		must make this a command line option.
@@ -655,15 +664,35 @@ public class emit {
       out.println();
       out.println("  /** Production table. */");
       out.println("  protected static final short _production_table[][] = ");
-      out.print  ("    unpackFromStrings(");
-      do_table_as_string(out, prod_table);
-      out.println(");");
+		if (UNPACK_FROM_STRING) {
+			out.print("    unpackFromStrings(");
+			do_table_as_string(out, prod_table);
+			out.println(");");
+		} else {
+			read_table_from_file(out, prod_table);
+		}
 
       /* do the public accessor method */
       out.println();
       out.println("  /** Access to production table. */");
       out.println("  public short[][] production_table() " + 
 						 "{return _production_table;}");
+
+		if (!UNPACK_FROM_STRING) {
+			/* method to read short[][] from file */
+			out.println();
+			out.println("public static short[][] getFromFile(String filename) {");
+			out.println("    try {");
+			out.println("	    ClassLoader cl = jasmin.parser.class.getClassLoader();");
+			out.println("       filename = cl.getResource(filename).getFile();");
+			out.println("   	ObjectInputStream ois = new ObjectInputStream(new FileInputStream(new File(filename)));");
+			out.println("   	short[][] sa2 = (short[][]) ois.readObject();");
+			out.println("   	return sa2;");
+			out.println("  } catch (Throwable t) {");
+			out.println("    throw new RuntimeException(\"oups: \" + t);");
+			out.println("  }");
+			out.println("}");
+		}
 
       production_table_time = System.currentTimeMillis() - start_time;
     }
@@ -762,9 +791,13 @@ public class emit {
       out.println();
       out.println("  /** Parse-action table. */");
       out.println("  protected static final short[][] _action_table = "); 
-      out.print  ("    unpackFromStrings(");
-      do_table_as_string(out, action_table);
-      out.println(");");
+		if (UNPACK_FROM_STRING) {
+			out.print("    unpackFromStrings(");
+			do_table_as_string(out, action_table);
+			out.println(");");
+		} else {
+			read_table_from_file(out, action_table);
+		}
 
       /* do the public accessor method */
       out.println();
@@ -824,9 +857,13 @@ public class emit {
       out.println();
       out.println("  /** <code>reduce_goto</code> table. */");
       out.println("  protected static final short[][] _reduce_table = "); 
-      out.print  ("    unpackFromStrings(");
-      do_table_as_string(out, reduce_goto_table);
-      out.println(");");
+		if (UNPACK_FROM_STRING) {
+			out.print("    unpackFromStrings(");
+			do_table_as_string(out, reduce_goto_table);
+			out.println(");");
+		} else {
+			read_table_from_file(out, reduce_goto_table);
+		}
 
       /* do the public accessor method */
       out.println();
@@ -860,6 +897,52 @@ public class emit {
     }
     out.print("\" }");
   }
+
+	// dump the given short[][] array into a file
+	static int array_number = 0;
+	protected static void read_table_from_file(PrintWriter out, short[][] sa) {
+
+		String filename = /* "ttttest" + /* "/tmp/array" */"jasmin22/shortarray_" + array_number++ + ".obj";
+		File f = new File(filename);
+
+		try {
+			f.getParentFile().mkdirs();
+			f.createNewFile();
+
+			FileWriter fw = new FileWriter(new File(filename));
+
+			ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(f));
+			try {
+				oos.writeObject(sa);
+			} finally {
+				oos.close();
+			}
+
+			//			try {
+			//				ObjectInputStream ois = new ObjectInputStream(new FileInputStream(new File(filename)));
+			//				short[][] readsa = (short[][]) ois.readObject();
+			//				for (int i = 0; i < sa.length; i++) {
+			//					short[] sa_elem = readsa[i];
+			//					for (int j = 0; j < sa_elem.length; j++) {
+			//						if (!(sa_elem[j] == sa[i][j]))
+			//							throw new RuntimeException("oups!");
+			//						else
+			//							System.out.println("ok: " + sa[i][j]);
+			//					}
+			//				}
+			//			} finally {
+			//				oos.close();
+			//			}
+
+
+
+		} catch (Throwable t) {
+			throw new RuntimeException("t" + t);
+		}
+
+		out.println("getFromFile(\"" + filename + "\");");
+	}
+
   // split string if it is very long; start new line occasionally for neatness
   protected static int do_newline(PrintWriter out, int nchar, int nbytes) {
     if (nbytes > 65500)  { out.println("\", "); out.print("    \""); }
@@ -920,6 +1003,12 @@ public class emit {
       emit_package(out);
 
       /* user supplied imports */
+		import_list.add("java.util.List");
+		import_list.add("java.util.ArrayList");
+		import_list.add("java.io.FileReader");
+		import_list.add("java.io.File");
+		import_list.add("java.io.ObjectInputStream");
+		import_list.add("java.io.FileInputStream");
       for (int i = 0; i < import_list.size(); i++)
 	out.println("import " + import_list.elementAt(i) + ";");
       if (locations())
