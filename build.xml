@@ -56,11 +56,11 @@
   <taskdef name="jflex" classname="JFlex.anttask.JFlexTask" classpath="${bin}/JFlex.jar" />
 
   <target name="cup" depends="init">
-    <cup srcfile="${cup}/parser.cup" interface="on" destdir="${java}" parser="parser" symbols="sym" quiet="false" nonterms="true"/>
+    <cup srcfile="${cup}/parser.cup" interface="on" destdir="${src}" parser="parser" symbols="sym" quiet="false" nonterms="true"/>
   </target>
 
   <target name="jflex" depends="cup">
-    <jflex file="${flex}/Lexer.jflex" destdir="${java}" />
+    <jflex file="${flex}/Lexer.jflex" destdir="${src}" />
   </target>
 
   <target name="compile" depends="jflex">
