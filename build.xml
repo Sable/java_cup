@@ -83,6 +83,8 @@
     </jar>
     <jar jarfile="${dist}/java-cup-11b-runtime.jar" basedir="${classes}" includes="java_cup/runtime/*">
     </jar>
+    <jar jarfile="${dist}/java-cup-11b-all.jar" basedir="${classes}" includes="*/**">
+    </jar>
    <tar longfile="gnu"  destfile="${dist}/java-cup-bin-11b-${cupversion}.tar.gz" compression="gzip">
      <tarfileset dir="${dist}" username="ant" group="ant">
        <depth max="0"/>
