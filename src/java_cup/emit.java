@@ -683,9 +683,9 @@ public class emit {
 			out.println();
 			out.println("public static short[][] getFromFile(String filename) {");
 			out.println("    try {");
-			out.println("	    ClassLoader cl = jasmin.parser.class.getClassLoader();");
-			out.println("       filename = cl.getResource(filename).getFile();");
-			out.println("   	ObjectInputStream ois = new ObjectInputStream(new FileInputStream(new File(filename)));");
+			out.println("	    ClassLoader cl = java_cup.parser.class.getClassLoader();");
+			out.println("       InputStream is = cl.getResourceAsStream(filename);");
+			out.println("   	ObjectInputStream ois = new ObjectInputStream(is);");
 			out.println("   	short[][] sa2 = (short[][]) ois.readObject();");
 			out.println("   	return sa2;");
 			out.println("  } catch (Throwable t) {");
@@ -902,7 +902,7 @@ public class emit {
 	static int array_number = 0;
 	protected static void read_table_from_file(PrintWriter out, short[][] sa) {
 
-		String filename = /* "ttttest" + /* "/tmp/array" */"jasmin22/shortarray_" + array_number++ + ".obj";
+		String filename = "tables.out/shortarray_" + array_number++ + ".obj";
 		File f = new File(filename);
 
 		try {
